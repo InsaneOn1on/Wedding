@@ -140,6 +140,149 @@ def get_rsvp(rsvp_id):
         print(f"Error fetching RSVP: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@app.route('/api/rsvp/check', methods=['POST'])
+def check_rsvp():
+    """Check if an RSVP already exists by email or phone"""
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        phone = data.get('phone')
+        
+        if not email and not phone:
+            return jsonify({'exists': False}), 200
+        
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Check by email or phone
+        if email and phone:
+            cursor.execute('SELECT * FROM rsvp WHERE LOWER(email) = LOWER(?) OR phone = ?', (email, phone))
+        elif email:
+            cursor.execute('SELECT * FROM rsvp WHERE LOWER(email) = LOWER(?)', (email,))
+        elif phone:
+            cursor.execute('SELECT * FROM rsvp WHERE phone = ?', (phone,))
+        
+        row = cursor.fetchone()
+        
+        if row is None:
+            conn.close()
+            return jsonify({'exists': False}), 200
+        
+        rsvp = {
+            'exists': True,
+            'id': row['id'],
+            'name': row['name'],
+            'email': row['email'],
+            'phone': row['phone'],
+            'guests': row['guests'],
+            'attending': row['attending'],
+            'created_at': row['created_at']
+        }
+        
+        conn.close()
+        return jsonify(rsvp), 200
+        
+    except Exception as e:
+        print(f"Error checking RSVP: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/rsvp/find', methods=['GET'])
+def find_rsvp():
+    """Find an RSVP by email, name, or phone"""
+    try:
+        email = request.args.get('email')
+        name = request.args.get('name')
+        phone = request.args.get('phone')
+        
+        if not email and not name and not phone:
+            return jsonify({'error': 'Please provide email, name, or phone number'}), 400
+        
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Try to find by email first (most reliable)
+        if email:
+            cursor.execute('SELECT * FROM rsvp WHERE LOWER(email) = LOWER(?)', (email,))
+        elif name:
+            cursor.execute('SELECT * FROM rsvp WHERE LOWER(name) = LOWER(?)', (name,))
+        elif phone:
+            cursor.execute('SELECT * FROM rsvp WHERE phone = ?', (phone,))
+        
+        row = cursor.fetchone()
+        
+        if row is None:
+            return jsonify({'error': 'RSVP not found. Please check your information and try again.'}), 404
+        
+        rsvp = {
+            'id': row['id'],
+            'name': row['name'],
+            'email': row['email'],
+            'phone': row['phone'],
+            'guests': row['guests'],
+            'attending': row['attending'],
+            'dietary': row['dietary'],
+            'message': row['message'],
+            'created_at': row['created_at']
+        }
+        
+        conn.close()
+        return jsonify(rsvp), 200
+        
+    except Exception as e:
+        print(f"Error finding RSVP: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/rsvp/<int:rsvp_id>', methods=['PUT'])
+def update_rsvp(rsvp_id):
+    """Update an existing RSVP entry"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'email', 'guests', 'attending']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Check if RSVP exists
+        cursor.execute('SELECT id FROM rsvp WHERE id = ?', (rsvp_id,))
+        if cursor.fetchone() is None:
+            conn.close()
+            return jsonify({'error': 'RSVP not found'}), 404
+        
+        # Update the RSVP
+        cursor.execute('''
+            UPDATE rsvp 
+            SET name = ?, email = ?, phone = ?, guests = ?, attending = ?, dietary = ?, message = ?
+            WHERE id = ?
+        ''', (
+            data['name'],
+            data['email'],
+            data.get('phone', ''),
+            data['guests'],
+            data['attending'],
+            data.get('dietary', ''),
+            data.get('message', ''),
+            rsvp_id
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'RSVP updated successfully',
+            'id': rsvp_id
+        }), 200
+        
+    except Exception as e:
+        print(f"Error updating RSVP: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
     """Get RSVP statistics"""

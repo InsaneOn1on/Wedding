@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Lato:wght@300;400;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+
 * {
   margin: 0;
   padding: 0;
@@ -6,9 +8,10 @@
 
 body {
   font-family: 'Lato', sans-serif;
-  background: #f7fafc;
-  color: #2d3748;
+  background: #ffffff;
+  color: #1a1a1a;
   line-height: 1.6;
+  min-height: 100vh;
 }
 
 #app {
@@ -17,8 +20,9 @@ body {
   min-height: 100vh;
 }
 
-h1, h2, h3 {
-  font-family: 'Playfair Display', serif;
+h1 {
+  font-family: 'Great Vibes', cursive;
+  font-weight: 400;
 }
 
 button {
