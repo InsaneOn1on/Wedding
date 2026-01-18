@@ -1,14 +1,92 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_mail import Mail, Message
 import sqlite3
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
 
+# Email configuration
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME')
+
+mail = Mail(app)
+
 # Database file path
 DB_PATH = os.path.join(os.path.dirname(__file__), 'wedding.db')
+
+def send_confirmation_email(name, email, attending, guests):
+    """Send RSVP confirmation email"""
+    try:
+        msg = Message(
+            subject='RSVP Confirmation - The Kendalls Wedding',
+            sender=('Alex and Alesia', os.environ.get('MAIL_USERNAME')),
+            recipients=[email],
+            reply_to='noreply@kendallwedding.com'
+        )
+        
+        status = "attending" if attending == "yes" else "unable to attend"
+        guest_text = f"{guests} guest{'s' if guests > 1 else ''}"
+        
+        msg.body = f"""Dear {name},
+
+Thank you for your RSVP!
+
+We have received your response and you are confirmed as {status} with {guest_text}.
+
+Wedding Details:
+Date: March 27, 2027
+Venue: The Grand Ballroom
+
+If you need to update your RSVP, please visit our website.
+
+We look forward to celebrating with you!
+
+With love,
+The Kendalls
+"""
+        
+        msg.html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #1a1a1a; font-family: 'Georgia', serif;">The Kendalls Wedding</h1>
+                <p>Dear {name},</p>
+                <p>Thank you for your RSVP!</p>
+                <p>We have received your response and you are confirmed as <strong>{status}</strong> with <strong>{guest_text}</strong>.</p>
+                
+                <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; border-left: 4px solid #1a1a1a;">
+                    <h3 style="margin-top: 0;">Wedding Details</h3>
+                    <p style="margin: 5px 0;"><strong>Date:</strong> March 27, 2027</p>
+                    <p style="margin: 5px 0;"><strong>Venue:</strong> The Grand Ballroom</p>
+                </div>
+                
+                <p>If you need to update your RSVP, please visit our website.</p>
+                <p>We look forward to celebrating with you!</p>
+                
+                <p style="margin-top: 30px;">With love,<br><strong>The Kendalls</strong></p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        mail.send(msg)
+        print(f"Confirmation email sent to {email}")
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        return False
+
 
 def init_db():
     """Initialize the database with the RSVP table"""
@@ -65,6 +143,14 @@ def create_rsvp():
         conn.commit()
         rsvp_id = cursor.lastrowid
         conn.close()
+        
+        # Send confirmation email
+        send_confirmation_email(
+            data['name'],
+            data['email'],
+            data['attending'],
+            data['guests']
+        )
         
         return jsonify({
             'message': 'RSVP submitted successfully',
