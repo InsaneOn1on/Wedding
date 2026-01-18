@@ -1,0 +1,31 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Lato', sans-serif;
+  background: #f7fafc;
+  color: #2d3748;
+  line-height: 1.6;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+h1, h2, h3 {
+  font-family: 'Playfair Display', serif;
+}
+
+button {
+  cursor: pointer;
+  font-family: 'Lato', sans-serif;
+}
+
+input, textarea {
+  font-family: 'Lato', sans-serif;
+}
